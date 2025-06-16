@@ -395,9 +395,6 @@ function analyzeBasicText(text) {
     } else if (/(?:ל)?(?:מבוגרים|בוגרים|מבוגר|בוגר)/.test(lowerText)) {
       analysis.ageRange = "17+";
     }
-  }|מבוגר|בוגר)/.test(lowerText)) {
-      analysis.ageRange = "17+";
-    }
   }
   
   // זיהוי מצבי רוח
