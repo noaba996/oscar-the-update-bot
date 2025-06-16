@@ -36,26 +36,26 @@ let conversationMemory = {
   recommendationOffset: 0
 };
 
-// 📚 שאלות אינטראקטיביות
+// 📚 שאלות אינטראקטיביות - מעודכנות וברורות
 const interactiveQuestions = [
   {
     id: "genres",
-    question: "איזה סוגי סרטים אתה אוהב? (למשל: אקשן, קומדיה, דרמה וכו') 🎭",
+    question: "איזה סוגי סרטים אתה אוהב? 🎭<br>(למשל: אקשן, קומדיה, דרמה, רומנטי, אימה, מתח וכו')",
     keywords: ["ז'אנר", "סוג", "סרטים", "אוהב"]
   },
   {
     id: "age",
-    question: "מה הגיל שלך? זה יעזור לי להתאים סרטים מתאימים 👥",
+    question: "מה הגיל שלך? 👥<br>(זה יעזור לי להתאים סרטים מתאימים לגילך)",
     keywords: ["גיל", "בן", "בת", "ילד", "מבוגר"]
   },
   {
     id: "duration",
-    question: "כמה זמן יש לך לצפות בסרט? (קצר/בינוני/ארוך) 🕒",
+    question: "כמה זמן יש לך לצפות בסרט? ⏰<br>(קצר - עד שעה וחצי, בינוני - כשעתיים, ארוך - יותר משעתיים)",
     keywords: ["זמן", "אורך", "כמה זמן", "משך"]
   },
   {
     id: "platforms",
-    question: "האם יש לך מנוי לנטפליקס, יס או הוט? 📺",
+    question: "באיזו פלטפורמה אתה יכול לצפות? 📺<br>(נטפליקס, יס, הוט - או כמה מהן)",
     keywords: ["פלטפורמה", "מנוי", "נטפליקס", "יס", "הוט"]
   }
 ];
@@ -306,14 +306,10 @@ function checkUnderstanding(message, questionId) {
 }
 
 /**
- * קבלת השאלה הבאה שצריך לשאול
+ * קבלת השאלה הבאה שצריך לשאול - סדר קבוע
  */
 function getNextQuestion() {
-  const allInfoCollected = Object.values(conversationMemory.collectedInfo).every(info => info === true);
-  if (allInfoCollected) {
-    return null;
-  }
-
+  // סדר קבוע: ז'אנר → גיל → משך זמן → פלטפורמה
   const questionOrder = ["genres", "age", "duration", "platforms"];
   
   for (const questionId of questionOrder) {
@@ -322,10 +318,11 @@ function getNextQuestion() {
     }
   }
 
+  // אם נאסף הכל - אין שאלה נוספת
   return null;
 }
 /**
- * ניתוח טקסט בסיסי כחלופה - משופר עם עדכון זיכרון
+ * ניתוח טקסט בסיסי - משופר לחילוץ מידע מרוכב
  */
 function analyzeBasicText(text) {
   const lowerText = text.toLowerCase();
@@ -343,41 +340,114 @@ function analyzeBasicText(text) {
     needsMoreInfo: null
   };
   
-  // זיהוי ז'אנרים
-  if (lowerText.includes('קומדיה') || lowerText.includes('מצחיק')) analysis.genres.push('קומדיה');
-  if (lowerText.includes('אקשן') || lowerText.includes('פעולה')) analysis.genres.push('אקשן');
-  if (lowerText.includes('דרמה') || lowerText.includes('רגשי')) analysis.genres.push('דרמה');
-  if (lowerText.includes('רומנטי') || lowerText.includes('אהבה')) analysis.genres.push('רומנטי');
-  if (lowerText.includes('אימה') || lowerText.includes('מפחיד')) analysis.genres.push('אימה');
+  // זיהוי ז'אנרים - רחב יותר
+  const genreMatches = {
+    'קומדיה': ['קומדיה', 'מצחיק', 'קומדי', 'צחוק', 'הומור', 'בדיחה', 'משעשע'],
+    'אקשן': ['אקשן', 'פעולה', 'קרב', 'לחימה', 'מרדף', 'אקטיון'],
+    'דרמה': ['דרמה', 'רגשי', 'דרמטי', 'מרגש', 'נוגע ללב'],
+    'רומנטי': ['רומנטי', 'אהבה', 'רומנטיקה', 'זוגי', 'מתוק'],
+    'אימה': ['אימה', 'מפחיד', 'אימתני', 'מבעית', 'זומבי'],
+    'מתח': ['מתח', 'מותחן', 'ריגול', 'בלש', 'חקירה'],
+    'מדע בדיוני': ['מדע בדיוני', 'sci-fi', 'עתידני', 'חלל', 'רובוטים', 'טכנולוגיה'],
+    'פנטזיה': ['פנטזיה', 'קסם', 'דרקונים', 'אגדה', 'כישוף'],
+    'אנימציה': ['אנימציה', 'מצויר', 'אנימה', 'קרטון']
+  };
+  
+  for (const [genre, keywords] of Object.entries(genreMatches)) {
+    if (keywords.some(keyword => lowerText.includes(keyword))) {
+      analysis.genres.push(genre);
+    }
+  }
+  
+  // זיהוי גיל - מורחב כולל כפתורים
+  const agePatterns = [
+    // גיל מפורש
+    /(?:בן|בת|גיל|אני)\s*(\d+)/,
+    /(\d+)\s*(?:שנה|שנים)/,
+    /לגיל\s*(\d+)/,
+    // קטגוריות גיל
+    /(?:ל)?(?:ילדים|ילד|ילדה|קטנים|צעירים)/,
+    /(?:ל)?(?:נוער|נערים|מתבגרים|בני נוער)/,
+    /(?:ל)?(?:מבוגרים|בוגרים|מבוגר|בוגר)/,
+    /(?:כל )?(?:המשפחה|משפחתי|משפחה)/
+  ];
+  
+  // בדיקת מספרים
+  for (const pattern of agePatterns) {
+    const match = lowerText.match(pattern);
+    if (match && match[1]) { // יש מספר
+      const age = parseInt(match[1]);
+      if (age >= 5 && age <= 120) {
+        if (age >= 7 && age <= 12) analysis.ageRange = "7+";
+        else if (age >= 13 && age <= 16) analysis.ageRange = "13+";
+        else if (age >= 17) analysis.ageRange = "17+";
+        break;
+      }
+    }
+  }
+  
+  // בדיקת קטגוריות ללא מספר וכפתורים
+  if (!analysis.ageRange) {
+    if (/(?:ל)?(?:ילדים|ילד|ילדה|קטנים|צעירים|כל המשפחה|משפחתי)/.test(lowerText)) {
+      analysis.ageRange = "7+";
+    } else if (/(?:ל)?(?:נוער|נערים|מתבגרים|בני נוער)/.test(lowerText)) {
+      analysis.ageRange = "13+";
+    } else if (/(?:ל)?(?:מבוגרים|בוגרים|מבוגר|בוגר)/.test(lowerText)) {
+      analysis.ageRange = "17+";
+    }
+  }|מבוגר|בוגר)/.test(lowerText)) {
+      analysis.ageRange = "17+";
+    }
+  }
   
   // זיהוי מצבי רוח
-  if (lowerText.includes('עצוב') || lowerText.includes('משעמם')) analysis.mood = 'עצוב';
+  if (lowerText.includes('עצוב') || lowerText.includes('משעמם לי')) analysis.mood = 'עצוב';
   if (lowerText.includes('שמח') || lowerText.includes('טוב לי')) analysis.mood = 'שמח';
   if (lowerText.includes('רומנטי')) analysis.mood = 'רומנטי';
   
-  // זיהוי פלטפורמות
-  if (lowerText.includes('נטפליקס')) analysis.platforms.push('נטפליקס');
-  if (lowerText.includes('יס')) analysis.platforms.push('יס');
-  if (lowerText.includes('הוט')) analysis.platforms.push('הוט');
+  // זיהוי פלטפורמות - מורחב
+  const platformPatterns = {
+    'נטפליקס': ['נטפליקס', 'netflix', 'מנוי נטפליקס'],
+    'יס': ['יס', 'yes', 'ערוץ יס', 'מנוי יס'],
+    'הוט': ['הוט', 'hot', 'ערוץ הוט', 'מנוי הוט']
+  };
   
-  // זיהוי גיל
-  const ageMatch = lowerText.match(/(\d+)/);
-  if (ageMatch) {
-    const age = parseInt(ageMatch[1]);
-    if (age >= 7 && age <= 12) analysis.ageRange = "7+";
-    else if (age >= 13 && age <= 16) analysis.ageRange = "13+";
-    else if (age >= 17) analysis.ageRange = "17+";
+  for (const [platform, keywords] of Object.entries(platformPatterns)) {
+    if (keywords.some(keyword => lowerText.includes(keyword))) {
+      analysis.platforms.push(platform);
+    }
   }
   
-  // זיהוי משך זמן
-  if (lowerText.includes('קצר') || lowerText.includes('מהיר')) analysis.duration = 'קצר';
-  if (lowerText.includes('בינוני')) analysis.duration = 'בינוני';
-  if (lowerText.includes('ארוך')) analysis.duration = 'ארוך';
+  // זיהוי משך זמן - מורחב
+  const durationPatterns = {
+    'קצר': [
+      'קצר', 'מהיר', 'קצת זמן', 'לא יותר מידי', 'משהו קטן', 
+      'עד שעה וחצי', 'פחות משעה וחצי', 'שעה', 'דקות'
+    ],
+    'בינוני': [
+      'בינוני', 'רגיל', 'סטנדרטי', 'נורמלי', 'כשעתיים', 
+      'שעה וחצי עד שעתיים', 'לא יותר מדי ארוך'
+    ],
+    'ארוך': [
+      'ארוך', 'יותר משעתיים', 'מעל שעתיים', 'סרט ארוך', 
+      'אין לי בעיה עם זמן', 'יש לי הרבה זמן'
+    ]
+  };
+  
+  for (const [duration, keywords] of Object.entries(durationPatterns)) {
+    if (keywords.some(keyword => lowerText.includes(keyword))) {
+      analysis.duration = duration;
+      break;
+    }
+  }
   
   // זיהוי פקודות
-  if (lowerText.includes('עוד') || lowerText.includes('אחרים')) analysis.command = 'אחרים';
-  if (lowerText.includes('תודה')) analysis.command = 'תודה';
-  if (lowerText.includes('ביי') || lowerText.includes('להתראות')) analysis.command = 'סיום';
+  if (lowerText.includes('עוד') || lowerText.includes('אחרים') || lowerText.includes('נוספים')) analysis.command = 'אחרים';
+  if (lowerText.includes('תודה') || lowerText.includes('thanks')) analysis.command = 'תודה';
+  if (lowerText.includes('ביי') || lowerText.includes('להתראות') || lowerText.includes('bye')) analysis.command = 'סיום';
+  
+  console.log("🔍 ניתוח טקסט עבור:", text);
+  console.log("📊 תוצאת ניתוח:", analysis);
   
   return analysis;
 }
@@ -530,13 +600,13 @@ function formatMovieRecommendation(movie) {
 }
 
 /**
- * יצירת תגובה חכמה עם מנגנון תשאול
+ * יצירת תגובה חכמה עם מנגנון תשאול - מתוקן
  */
 function generateSmartResponse(analysis, foundMovies, userMessage) {
   console.log("🔍 ניתוח נוכחי:", analysis);
   console.log("🧠 זיכרון לפני עדכון:", conversationMemory);
   
-  // טיפול בפקודות מיוחדות
+  // טיפול בפקודות מיוחדות קודם
   if (analysis.command) {
     switch (analysis.command) {
       case 'תודה':
@@ -545,39 +615,53 @@ function generateSmartResponse(analysis, foundMovies, userMessage) {
         resetConversationMemory();
         return "תודה שהשתמשת באוסקר! 🎬 מקווה שתהנה מהסרט! עד הפעם הבאה! 👋";
       case 'אחרים':
-        conversationMemory.recommendationOffset += 3;
+        // אם כבר יש המלצות, הצג עוד
+        if (conversationMemory.conversationState === "recommending" && foundMovies && foundMovies.length > 0) {
+          conversationMemory.recommendationOffset += 3;
+          const moviesToShow = foundMovies.slice(conversationMemory.recommendationOffset, conversationMemory.recommendationOffset + 3);
+          
+          if (moviesToShow.length === 0) {
+            conversationMemory.recommendationOffset = 0;
+            return "זהו, הצגתי את כל הסרטים שמצאתי! אולי ננסה עם העדפות אחרות? 😉";
+          }
+          
+          let response = "הנה עוד המלצות בשבילך:<br><br>";
+          moviesToShow.forEach((movie, index) => {
+            response += `${conversationMemory.recommendationOffset + index + 1}. ${formatMovieRecommendation(movie)}<br><br>`;
+          });
+          
+          if (foundMovies.length > (conversationMemory.recommendationOffset + 3)) {
+            response += "רוצה עוד המלצות? פשוט תגיד 'עוד'! 😉";
+          }
+          
+          return response;
+        }
         break;
     }
   }
 
-  // עדכון זיכרון השיחה מניתוח Gemini או ניתוח בסיסי
+  // עדכון זיכרון השיחה מניתוח
   updateConversationMemory(analysis);
   
   console.log("🧠 זיכרון אחרי עדכון:", conversationMemory);
   
-  // בדיקה אם יש מספיק מידע להמלצות
+  // בדיקה אם יש מספיק מידע להמלצות  
   const hasEnoughInfo = checkIfHasEnoughInfo();
+  console.log("✅ יש מספיק מידע?", hasEnoughInfo);
   
   if (hasEnoughInfo) {
     conversationMemory.conversationState = "recommending";
     
     if (foundMovies && foundMovies.length > 0) {
-      const moviesToShow = foundMovies.slice(conversationMemory.recommendationOffset, conversationMemory.recommendationOffset + 3);
+      const moviesToShow = foundMovies.slice(0, 3); // תמיד מההתחלה
       
-      if (moviesToShow.length === 0) {
-        conversationMemory.recommendationOffset = 0;
-        return "זהו, הצגתי את כל הסרטים שמצאתי! אולי ננסה עם העדפות אחרות? 😉";
-      }
-      
-      let response = analysis.command === 'אחרים' ? 
-        "הנה עוד המלצות בשבילך:<br><br>" : 
-        "מצאתי כמה סרטים מעולים בשבילך!<br><br>";
+      let response = "מעולה! בהתבסס על ההעדפות שלך, הנה כמה המלצות:<br><br>";
       
       moviesToShow.forEach((movie, index) => {
-        response += `${conversationMemory.recommendationOffset + index + 1}. ${formatMovieRecommendation(movie)}<br><br>`;
+        response += `${index + 1}. ${formatMovieRecommendation(movie)}<br><br>`;
       });
       
-      if (foundMovies.length > (conversationMemory.recommendationOffset + 3)) {
+      if (foundMovies.length > 3) {
         response += "רוצה עוד המלצות? פשוט תגיד 'עוד'! 😉";
       }
       
@@ -585,37 +669,53 @@ function generateSmartResponse(analysis, foundMovies, userMessage) {
     } else {
       // לא נמצאו סרטים - איפוס ושאלה מחדש
       resetConversationMemory();
-      const nextQuestion = getNextQuestion();
-      return "לא מצאתי סרטים שמתאימים בדיוק להעדפות שלך. בואי ננסה שוב!<br><br>" + 
-             (nextQuestion ? nextQuestion.question : "מה מעניין אותך?");
+      return "לא מצאתי סרטים שמתאימים בדיוק להעדפות שלך. בואי ננסה שוב!<br><br>איזה סוגי סרטים אתה אוהב? 🎭";
     }
   } else {
     // עדיין צריך לאסוף מידע
     const nextQuestion = getNextQuestion();
     
     if (nextQuestion) {
-      // בדיקה אם המשתמש ענה על השאלה הנוכחית
-      if (conversationMemory.lastQuestion) {
-        const understood = checkUnderstanding(userMessage, conversationMemory.lastQuestion);
-        if (!understood && !isUnclearText(userMessage)) {
-          return `לא בטוח שהבנתי. ${nextQuestion.question}`;
-        }
-      }
-      
       conversationMemory.lastQuestion = nextQuestion.id;
       
-      // יצירת תגובה מותאמת למידע שכבר נאסף
+      // יצירת תגובה עם התקדמות
       let response = "";
       const providedInfo = getProvidedInfoSummary(analysis);
+      const progress = getProgressSummary();
       
       if (providedInfo.length > 0) {
-        response += `תודה על המידע בנוגע ל${providedInfo.join(' ו-')}! `;
+        response += `נהדר! קלטתי: ${providedInfo.join(', ')}. `;
       }
       
-      response += `<br><br>${nextQuestion.question}`;
+      // הוספת התקדמות
+      response += `<br><br>📊 התקדמות: ${progress.collected}/${progress.total} (${progress.percentage}%)<br>`;
+      response += `${progress.text}<br><br>`;
+      
+      response += `${nextQuestion.question}<br><br>`;
+      
+      // הוספת כפתורים לפי סוג השאלה
+      switch (nextQuestion.id) {
+        case 'genres':
+          response += createGenreButtons();
+          break;
+        case 'duration':
+          response += createDurationButtons();
+          break;
+        case 'platforms':
+          response += createPlatformButtons();
+          break;
+        case 'age':
+          response += '<div class="choice-buttons">';
+          response += '<button class="choice-btn" onclick="selectChoice(\'ילדים\')">👶 ילדים (7-12)</button>';
+          response += '<button class="choice-btn" onclick="selectChoice(\'נוער\')">👦 נוער (13-16)</button>';
+          response += '<button class="choice-btn" onclick="selectChoice(\'מבוגרים\')">👨 מבוגרים (17+)</button>';
+          response += '</div>';
+          break;
+      }
+      
       return response;
     } else {
-      return "אשמח לעזור לך למצוא סרט מושלם! מה מעניין אותך?";
+      return "אשמח לעזור לך למצוא סרט מושלם! איזה סוגי סרטים אתה אוהב? 🎭";
     }
   }
 }
@@ -665,33 +765,95 @@ function updateConversationMemory(analysis) {
 }
 
 /**
- * בדיקה אם יש מספיק מידע להמלצות
+ * בדיקה אם יש מספיק מידע להמלצות - 4 סוגי מידע חובה
  */
 function checkIfHasEnoughInfo() {
-  // לפחות ז'אנר אחד חובה
-  const hasGenre = conversationMemory.collectedInfo.genres;
+  // דרישה מדויקת: ז'אנר + גיל + משך זמן + פלטפורמה
+  const requiredInfo = {
+    genres: conversationMemory.collectedInfo.genres,
+    age: conversationMemory.collectedInfo.age,
+    duration: conversationMemory.collectedInfo.duration,
+    platforms: conversationMemory.collectedInfo.platforms
+  };
   
-  // אופציונלי - פלטפורמה או גיל
-  const hasOptionalInfo = conversationMemory.collectedInfo.platforms || 
-                         conversationMemory.collectedInfo.age ||
-                         conversationMemory.collectedInfo.duration;
+  const collectedCount = Object.values(requiredInfo).filter(info => info === true).length;
+  const allRequired = Object.values(requiredInfo).every(info => info === true);
   
-  return hasGenre && hasOptionalInfo;
+  console.log("🔍 בדיקת מידע מספיק:", {
+    requiredInfo,
+    collectedCount,
+    allRequired,
+    need: "כל 4 הסוגים: ז'אנר, גיל, משך זמן, פלטפורמה"
+  });
+  
+  // צריך את כל 4 סוגי המידע
+  return allRequired;
 }
 
 /**
- * סיכום המידע שסופק
+ * סיכום המידע שסופק - מעודכן
  */
 function getProvidedInfoSummary(analysis) {
   const provided = [];
   
-  if (analysis.genres && analysis.genres.length > 0) provided.push("ז'אנר");
-  if (analysis.mood) provided.push("מצב רוח");
-  if (analysis.platforms && analysis.platforms.length > 0) provided.push("פלטפורמת צפייה");
-  if (analysis.ageRange) provided.push("גיל");
-  if (analysis.duration) provided.push("אורך סרט");
+  if (analysis.genres && analysis.genres.length > 0) {
+    provided.push(`${analysis.genres.join(' ו-')}`);
+  }
+  if (analysis.ageRange) {
+    provided.push(`גיל ${analysis.ageRange}`);
+  }
+  if (analysis.duration) {
+    provided.push(`סרטים ${analysis.duration === 'קצר' ? 'קצרים' : analysis.duration === 'בינוני' ? 'בינוניים' : 'ארוכים'}`);
+  }
+  if (analysis.platforms && analysis.platforms.length > 0) {
+    provided.push(`${analysis.platforms.join(' ו-')}`);
+  }
   
   return provided;
+}
+
+/**
+ * הצגת התקדמות איסוף המידע
+ */
+function getProgressSummary() {
+  const progress = [];
+  const total = 4;
+  let collected = 0;
+  
+  if (conversationMemory.collectedInfo.genres) {
+    progress.push("✅ ז'אנר");
+    collected++;
+  } else {
+    progress.push("❌ ז'אנר");
+  }
+  
+  if (conversationMemory.collectedInfo.age) {
+    progress.push("✅ גיל");
+    collected++;
+  } else {
+    progress.push("❌ גיל");
+  }
+  
+  if (conversationMemory.collectedInfo.duration) {
+    progress.push("✅ משך זמן");
+    collected++;
+  } else {
+    progress.push("❌ משך זמן");
+  }
+  
+  if (conversationMemory.collectedInfo.platforms) {
+    progress.push("✅ פלטפורמה");
+    collected++;
+  } else {
+    progress.push("❌ פלטפורמה");
+  }
+  
+  return {
+    text: progress.join(" | "),
+    collected,
+    total,
+    percentage: Math.round((collected / total) * 100)
+  };
 }
 
 /**
@@ -854,6 +1016,9 @@ document.addEventListener('DOMContentLoaded', function() {
     console.error("❌ אלמנטים חיוניים לא נמצאו");
     return;
   }
+  
+  // הוספת סגנונות הכפתורים
+  addButtonStyles();
   
   // הוספת מאזין לקלט
   input.addEventListener('keypress', function(e) {
