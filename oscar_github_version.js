@@ -8,10 +8,6 @@ const welcomeMessages = [
   "ברוכים הבאים! אני אוסקר ואשמח לעזור לך למצוא סרט מושלם 🎭 מה אתה מחפש?"
 ];
 
-// 🔑 הגדרות Gemini API
-const GEMINI_API_KEY = "AIzaSyAq-ngUJxyiZM2zkKyyv2yq2b5KsDx5c1M";
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
-
 // 🧠 זיכרון השיחה המשופר
 let conversationMemory = {
   lastGenres: [],
